@@ -49,11 +49,40 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
             % plot
             hold on
-            xfill = horzcat(x, fliplr(x));
-            yfill = horzcat(error_pos, fliplr(error_neg));
-            fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
-            p = plot(x, y,'color', mean_col);
+%             xfill = horzcat(x, fliplr(x));
+%             yfill = horzcat(error_pos, fliplr(error_neg));
+%             fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
+            p = plot(x, y,'color', mean_col, 'visible', 'off', 'linewidth', 1.5);
+            plot(reshape(spikes',[],1), reshape(gradient_spikes',[],1),'color', mean_col);
+        end
+        
+        % plot average waveform
+        function p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col)
+            % p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col)
+            % spikes = matrix where rows = different spikes and
+            % cols = time
             
+            % get average action potential
+            aver_spike = mean(spikes,1);
+            
+            % get standard deviation of action potentials
+            sem_spike = std(spikes,1)/sqrt(size(spikes,1));
+            
+            % get negative and positive error
+            y_error_neg = aver_spike - sem_spike;
+            y_error_pos = aver_spike + sem_spike;
+            
+            % get x-axis time
+            x = (0:size(spikes, 2)-1)/Fs*1000;
+            y = aver_spike;
+            
+            % plot mean and shaded sem
+            hold on;
+%             xfill = horzcat(x, fliplr(x));
+%             yfill = horzcat(y_error_pos, fliplr(y_error_neg));
+%             fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
+            p = plot(x, y,'color', mean_col,'Linewidth',1.5, 'visible', 'off');
+            plot(x,spikes,'color', mean_col)
         end
     end
     
@@ -204,35 +233,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
             
         end
-        
-        % plot average waveform
-        function aver_spike = aver_spike_waveform(obj, spikes)
-            % aver_spike = aver_spike_waveform(obj, spikes)
-            % spikes = matrix where rows = different spikes and
-            % cols = time
-            
-            % get average action potential
-            aver_spike = mean(spikes,1);
-            
-            % get standard deviation of action potentials
-            sem_spike = std(spikes,1)/sqrt(size(spikes,1));
-            
-            % get negative and positive error
-            y_error_neg = aver_spike - sem_spike;
-            y_error_pos = aver_spike + sem_spike;
-            
-            % get x-axis time
-            x = (0:size(spikes, 2)-1)/obj.Fs*1000;
-            y = aver_spike;
-            
-            % plot mean and shaded sem
-            hold on;
-            xfill = horzcat(x, fliplr(x));
-            yfill = horzcat(y_error_pos, fliplr(y_error_neg));
-            fill(xfill, yfill, [.8 .8 .8],'LineStyle','none','DisplayName','SEM');
-            plot(x, y,'color', 'k','Linewidth',1.5);
-        end
-        
+  
     end
     
 end

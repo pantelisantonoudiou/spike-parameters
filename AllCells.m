@@ -81,6 +81,7 @@ classdef AllCells < matlab.mixin.Copyable
         
         function plot_conditions(main_path, conditions, Fs)
             
+            figure()
             for i = 1:length(conditions)
                                 
                 % get spikes
@@ -90,10 +91,15 @@ classdef AllCells < matlab.mixin.Copyable
                 [col_mean,col_sem] = color_vec(i + 1); % get colors
                 p(i) = SpikeParameters.get_phase_plot(spikes, col_mean, col_sem);
                 
+%                 p(i) = SpikeParameters.aver_spike_waveform(spikes, Fs, col_mean, col_sem);
+                
             end
             
             prettify(gca)
-            xlabel('Vm')
+%             xlabel('Time (ms)')
+%             ylabel('Vm')
+            
+            xlabel('Vm (mV)')
             ylabel('dV/dt')
             legend(p, strrep(conditions, '_', ' '))
 
