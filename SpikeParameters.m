@@ -7,16 +7,21 @@ classdef SpikeParameters < matlab.mixin.Copyable
     % properties = x.spike_parameters(false)
     
     properties 
-        interp_factor = 10      % interpolation factor
-        data_trim_ms = 25       % milliseconds
-        ap_dt_threshold = 10    % action potential gradient threshold
+        interp_factor = 10                  % interpolation factor
+        data_trim_ms = 25                   % milliseconds
+        ap_dt_threshold = 10                % action potential gradient threshold
+        
+        % phase plane
+        trim_spikes = [1, 1]                % spikes to remove from phase_plane [start, stop]
+        spike_window = [3, 3]               % time to extract from spike peak [before, after] (msec)
+        spike_window_samp                   % time to extract from spike peak [before, after] (samples)
         
         % calculated values
-        data                    % data
-        t                       % time vector
-        Fs                      % sampling rate (per second)
-        data_trim               % data points
-        min_peak_dist           % minimum peak distance points
+        data                                % data
+        t                                   % time vector
+        Fs                                  % sampling rate (per second)
+        data_trim                           % data points
+        min_peak_dist                       % minimum peak distance points
     end
       
 
@@ -36,10 +41,13 @@ classdef SpikeParameters < matlab.mixin.Copyable
             obj.data = interp1(t, data, obj.t, 'spline');
             
             % calculate number of points to trim
-            obj.data_trim = obj.data_trim_ms/1000*obj.Fs;
+            obj.data_trim = obj.data_trim_ms/1000 * obj.Fs;
             
             % set min peak distance to 1.5 ms
-            obj.min_peak_dist = round(0.0015*obj.Fs);
+            obj.min_peak_dist = round(0.0015 * obj.Fs);
+            
+            % get time to extract spikes in samples
+            obj.spike_window_samp = round(obj.spike_window * obj.Fs / 1000);
         end
         
         % Get spike locations
@@ -146,7 +154,89 @@ classdef SpikeParameters < matlab.mixin.Copyable
             %%% -------------------------------------------------------- %%%
         end
         
+        % Extract spikes from data
+        function spikes = extract_spikes(obj)
+            
+            % Get peak locations and amplitude
+            [~, locs] = obj.spike_detect();
+            
+            % discard spikes at onset and offset of current stimulation
+            locs = locs(1 + obj.trim_spikes(1) : end - obj.trim_spikes(2));
+            
+            % create matrix to store spikes
+            spikes = zeros(length(locs), obj.spike_window_samp(1) + obj.spike_window_samp(2));
+            
+            for i = 1:length(locs)
+                spikes(i,:) = obj.data(locs(i)-obj.spike_window_samp(1) : locs(i)+obj.spike_window_samp(2)-1);
+            end
+            
+            
+        end
+        
+        % 
+        function aver_spike_waveform(obj)
+            % extract spikes from Vm signal
+            spikes = obj.extract_spikes();
+            
+            % get average action potential
+            avg_spike = mean(spikes,1);
+            
+            % get standard deviation of action potentials
+            std_spike = std(spikes,1);
+            
+            % get negative and positive error
+            y_error_neg = avg_spike - std_spike;
+            y_error_pos = avg_spike + std_spike;
+            
+            % get x-axis time
+            x = (0:size(spikes, 2)-1)/obj.Fs*1000;
+            y = avg_spike;
+            
+            % plot mean and shaded sem
+            hold on;
+            xfill = horzcat(x, fliplr(x));
+            yfill = horzcat(y_error_pos, fliplr(y_error_neg));
+            fill(xfill, yfill, [.8 .8 .8],'LineStyle','none','DisplayName','SEM');
+            plot(x, y,'color', 'k','Linewidth',1.5);
+        end
+        
+        function get_phase_plot(obj)
+            
+            % extract spikes from Vm signal
+            spikes = obj.extract_spikes();
+            
+            % get average action potential
+            avg_spike = mean(spikes,1);
+            
+            % get gradient
+            gradient_spikes = gradient(spikes);
+            
+            % find average and standard deviation
+            avg_gradient_spikes = mean(gradient_spikes,1);
+            std_gradient_spikes = std(gradient_spikes,1);
+            
+            % get error
+            error_pos = avg_gradient_spikes + std_gradient_spikes;
+            error_neg = avg_gradient_spikes - std_gradient_spikes;
+            
+            % get x and y for plotting
+            x = avg_spike;
+            y = avg_gradient_spikes;
+            
+            hold on
+            xfill = horzcat(x, fliplr(x));
+            yfill = horzcat(error_pos, fliplr(error_neg));
+            fill(xfill, yfill, [.8 .8 .8],'LineStyle','none','DisplayName','SEM');
+            plot(x, y,'color', 'k');
+            
+        end
         
     end
    
 end
+
+
+
+
+
+
