@@ -6,7 +6,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
     % Get spike parameters
     % properties = x.spike_parameters(false)
     
-    properties 
+    properties
         interp_factor = 10                  % interpolation factor
         data_trim_ms = 25                   % milliseconds
         ap_dt_threshold = 10                % action potential gradient threshold
@@ -23,17 +23,49 @@ classdef SpikeParameters < matlab.mixin.Copyable
         data_trim                           % data points
         min_peak_dist                       % minimum peak distance points
     end
-      
-
+    
+    methods(Static)
+        % plot phase plane
+        function p = get_phase_plot(spikes, mean_col, fill_col)
+            % p = get_phase_plot(spikes, mean_col, fill_col)
+            
+            % get average action potential
+            avg_spike = mean(spikes,1);
+            
+            % get gradient
+            gradient_spikes = gradient(spikes);
+            
+            % find average and standard deviation
+            avg_gradient_spikes = mean(gradient_spikes,1);
+            sem_gradient_spikes = std(gradient_spikes,1)/sqrt(size(spikes,1));
+            
+            % get error
+            error_pos = avg_gradient_spikes + sem_gradient_spikes;
+            error_neg = avg_gradient_spikes - sem_gradient_spikes;
+            
+            % get x and y for plotting
+            x = avg_spike;
+            y = avg_gradient_spikes;
+            
+            % plot
+            hold on
+            xfill = horzcat(x, fliplr(x));
+            yfill = horzcat(error_pos, fliplr(error_neg));
+            fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
+            p = plot(x, y,'color', mean_col);
+            
+        end
+    end
+    
     methods
         
         % consutructor (interpolate and get properties)
-        function obj = SpikeParameters(data, Fs)      
+        function obj = SpikeParameters(data, Fs)
             
             % get interpolation sampling rate
             obj.Fs= Fs*obj.interp_factor;
-
-            % create interpolation x vectors 
+            
+            % create interpolation x vectors
             t = (0:1:length(data)-1)/obj.Fs';
             obj.t = (0:1/obj.interp_factor:length(data)-1)/obj.Fs';
             
@@ -67,7 +99,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
             % detect rising peaks
             idx = peakseek(gradient(obj.data)*obj.Fs,obj.min_peak_dist,threshold);
-                  
+            
             if isempty(idx)==1 % if no peaks detected exit
                 pks = [];
                 locs = [];
@@ -81,7 +113,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
                 [~,idx2] = max(obj.data(idx(i):idx(i) + obj.min_peak_dist));
                 locs(i) = idx(i)+ idx2 - 1;
             end
-
+            
             % get peaks
             pks = obj.data(locs);
             
@@ -89,8 +121,8 @@ classdef SpikeParameters < matlab.mixin.Copyable
             locs = locs(pks > median(obj.data));
             pks = pks(pks > median(obj.data))';
             
-%              plot(obj.data);hold on
-%              plot(locs, pks, 'rx')
+            %              plot(obj.data);hold on
+            %              plot(locs, pks, 'rx')
         end
         
         % Get spike properties
@@ -111,7 +143,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
                 APthresh_idx(i) = start_point + find(gradient(spike_template)*obj.Fs> obj.ap_dt_threshold, 1, 'first');
                 
                 % Find AHP
-                [~, idx] = min(obj.data(locs(i):locs(i)+post)); 
+                [~, idx] = min(obj.data(locs(i):locs(i)+post));
                 AHP_idx(i) = locs(i) + idx;
             end
             
@@ -148,7 +180,7 @@ classdef SpikeParameters < matlab.mixin.Copyable
             properties.AP_amp =  AP_amp * 1000;                                                 % AP amplitude (mV)
             properties.AHP_amp  =  AHP_amp * 1000;                                              % AHP amplitude (mV)
             properties.AP_threshold = obj.data(APthresh_idx) * 1000;                            % AP threshold (mV)
-            properties.isi = diff(locs)/obj.Fs*1000;                                            % inter spike interval (ms)  
+            properties.isi = diff(locs)/obj.Fs*1000;                                            % inter spike interval (ms)
             properties.peak_to_trough = (AHP_idx - locs) / obj.Fs * 1000;                       % Peak to trough (ms)
             properties.AP_half_width = (AP_wdth_idx(2,:)- AP_wdth_idx(1,:)) / obj.Fs * 1000;    % Half width (ms)
             %%% -------------------------------------------------------- %%%
@@ -173,24 +205,25 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
         end
         
-        % 
-        function aver_spike_waveform(obj)
-            % extract spikes from Vm signal
-            spikes = obj.extract_spikes();
+        % plot average waveform
+        function aver_spike = aver_spike_waveform(obj, spikes)
+            % aver_spike = aver_spike_waveform(obj, spikes)
+            % spikes = matrix where rows = different spikes and
+            % cols = time
             
             % get average action potential
-            avg_spike = mean(spikes,1);
+            aver_spike = mean(spikes,1);
             
             % get standard deviation of action potentials
-            std_spike = std(spikes,1);
+            sem_spike = std(spikes,1)/sqrt(size(spikes,1));
             
             % get negative and positive error
-            y_error_neg = avg_spike - std_spike;
-            y_error_pos = avg_spike + std_spike;
+            y_error_neg = aver_spike - sem_spike;
+            y_error_pos = aver_spike + sem_spike;
             
             % get x-axis time
             x = (0:size(spikes, 2)-1)/obj.Fs*1000;
-            y = avg_spike;
+            y = aver_spike;
             
             % plot mean and shaded sem
             hold on;
@@ -200,39 +233,8 @@ classdef SpikeParameters < matlab.mixin.Copyable
             plot(x, y,'color', 'k','Linewidth',1.5);
         end
         
-        function get_phase_plot(obj)
-            
-            % extract spikes from Vm signal
-            spikes = obj.extract_spikes();
-            
-            % get average action potential
-            avg_spike = mean(spikes,1);
-            
-            % get gradient
-            gradient_spikes = gradient(spikes);
-            
-            % find average and standard deviation
-            avg_gradient_spikes = mean(gradient_spikes,1);
-            std_gradient_spikes = std(gradient_spikes,1);
-            
-            % get error
-            error_pos = avg_gradient_spikes + std_gradient_spikes;
-            error_neg = avg_gradient_spikes - std_gradient_spikes;
-            
-            % get x and y for plotting
-            x = avg_spike;
-            y = avg_gradient_spikes;
-            
-            hold on
-            xfill = horzcat(x, fliplr(x));
-            yfill = horzcat(error_pos, fliplr(error_neg));
-            fill(xfill, yfill, [.8 .8 .8],'LineStyle','none','DisplayName','SEM');
-            plot(x, y,'color', 'k');
-            
-        end
-        
     end
-   
+    
 end
 
 
