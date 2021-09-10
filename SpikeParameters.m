@@ -25,9 +25,13 @@ classdef SpikeParameters < matlab.mixin.Copyable
     end
     
     methods(Static)
+        
         % plot phase plane
-        function p = get_phase_plot(spikes, mean_col, fill_col)
-            % p = get_phase_plot(spikes, mean_col, fill_col)
+        function p = get_phase_plot(spikes, mean_col, fill_col, plot_var)
+            % p = get_phase_plot(spikes, mean_col, fill_col, plot_var)
+            
+            % set mean visibility
+            see_mean = 'off';
             
             % get average action potential
             avg_spike = mean(spikes,1);
@@ -49,18 +53,33 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
             % plot
             hold on
-%             xfill = horzcat(x, fliplr(x));
-%             yfill = horzcat(error_pos, fliplr(error_neg));
-%             fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
-            p = plot(x, y,'color', mean_col, 'visible', 'off', 'linewidth', 1.5);
-            plot(reshape(spikes',[],1), reshape(gradient_spikes',[],1),'color', mean_col);
+            if strcmp(plot_var, 'mean') == 1
+                
+                % set mean visibility
+                see_mean = 'on';
+                
+                % fill
+                xfill = horzcat(x, fliplr(x));
+                yfill = horzcat(error_pos, fliplr(error_neg));
+                fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
+                
+            elseif strcmp(plot_var, 'ind') == 1
+                % plot individual cells
+                plot(reshape(spikes',[],1), reshape(gradient_spikes',[],1),'color', mean_col);
+            end
+            
+            % plot mean
+            p = plot(x, y,'color', mean_col, 'visible', see_mean, 'linewidth', 1.5);
         end
-        
+               
         % plot average waveform
-        function p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col)
-            % p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col)
+        function p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col, plot_var)
+            % p = aver_spike_waveform(spikes, Fs,  mean_col, fill_col, plot_var)
             % spikes = matrix where rows = different spikes and
             % cols = time
+            
+            % set mean visibility
+            see_mean = 'off';
             
             % get average action potential
             aver_spike = mean(spikes,1);
@@ -78,11 +97,24 @@ classdef SpikeParameters < matlab.mixin.Copyable
             
             % plot mean and shaded sem
             hold on;
-%             xfill = horzcat(x, fliplr(x));
-%             yfill = horzcat(y_error_pos, fliplr(y_error_neg));
-%             fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
-            p = plot(x, y,'color', mean_col,'Linewidth',1.5, 'visible', 'off');
-            plot(x,spikes,'color', mean_col)
+            if strcmp(plot_var, 'mean') == 1
+                
+                % set mean visibility
+                see_mean = 'on';
+                
+                % fill
+                xfill = horzcat(x, fliplr(x));
+                yfill = horzcat(y_error_pos, fliplr(y_error_neg));
+                fill(xfill, yfill, fill_col,'LineStyle','none','DisplayName','SEM');
+                
+            elseif strcmp(plot_var, 'ind') == 1
+                
+                % plot individual cells
+                plot(x,spikes,'color', mean_col)
+            end
+             
+            % plot mean
+            p = plot(x, y,'color', mean_col,'Linewidth',1.5, 'visible', see_mean);
         end
     end
     

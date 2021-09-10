@@ -1,10 +1,12 @@
 classdef AllCells < matlab.mixin.Copyable
     %
+    % % Get spike properties
     % prism_array = AllCells.all_cells('Z:\Pantelis\Phil_data')
     %
-    
+
     properties
         Fs = 10000
+        plot_var = 'mean'
     end
     
     methods(Static) % Spike properties
@@ -77,44 +79,60 @@ classdef AllCells < matlab.mixin.Copyable
         
     end
     
-    methods(Static) % Phase plane
+    methods % Phase plane
         
-        function plot_conditions(main_path, conditions, Fs)
+        % phase plane
+        function plot_phase_plane_conditions(obj, main_path, conditions)
+            % plot_phase_plane_conditions(obj, main_path, conditions)
             
             figure()
             for i = 1:length(conditions)
                                 
-                % get spikes
-                spikes = AllCells.aver_phase_plane(main_path, conditions{i}, Fs);
+                % get spikes from all cells
+                spikes = obj.spikes_all_cells(main_path, conditions{i});
                 
                 % plot phase plane
                 [col_mean,col_sem] = color_vec(i + 1); % get colors
-                p(i) = SpikeParameters.get_phase_plot(spikes, col_mean, col_sem);
-                
-%                 p(i) = SpikeParameters.aver_spike_waveform(spikes, Fs, col_mean, col_sem);
-                
+                p(i) = SpikeParameters.get_phase_plot(spikes, col_mean, col_sem, obj.plot_var);       
             end
             
-            prettify(gca)
-%             xlabel('Time (ms)')
-%             ylabel('Vm')
-            
+            prettify(gca)            
             xlabel('Vm (mV)')
             ylabel('dV/dt')
             legend(p, strrep(conditions, '_', ' '))
 
-            
         end
         
+        % spike waveform
+        function plot_spike_waveform_conditions(obj, main_path, conditions)
+            % plot_spike_waveform_conditions(obj, main_path, conditions)
+            
+            figure()
+            for i = 1:length(conditions)
+                                
+                % get spikes from all cells
+                spikes = obj.spikes_all_cells(main_path, conditions{i});
+                
+                % plot spike waveform
+                [col_mean,col_sem] = color_vec(i + 1); % get colors
+                p(i) = SpikeParameters.aver_spike_waveform(spikes, obj.Fs, col_mean, col_sem, obj.plot_var);       
+            end
+            
+            prettify(gca)            
+            xlabel('Time (ms)')
+            ylabel('Vm (mV)')
+            legend(p, strrep(conditions, '_', ' '))
+
+        end
+
         % get average spike for each cell
-        function spikes = aver_phase_plane(main_path, filter, Fs)
-            % spikes = aver_phase_plane(main_path, filter, Fs)
+        function spikes = spikes_all_cells(obj, main_path, filter)
+            % spikes = spikes_all_cells(obj, main_path, filter)
             %
             % INPUTS
             % ----------
             % main_path: str, path to folder with mat data
             % filter: str, used to filter files
-            % Fs: int, sampling rate
             %
             % OUTPUTS
             % ----------
@@ -139,7 +157,7 @@ classdef AllCells < matlab.mixin.Copyable
                 data = s.store_mat{get_index(s.store_mat(:,2), max(io)), 1};
                 
                 % get aver spike
-                spikes = AllCells.choose_repetition(data, Fs, 0);
+                spikes = obj.choose_repetition(data, 0);
                 all_spikes{i} = mean(spikes,1);
                 
                 waitbar(i/length(file_dir), w, 'Extracting Waveforms...'); % update progress bar
@@ -153,8 +171,8 @@ classdef AllCells < matlab.mixin.Copyable
         end
         
         % extract spike waveform
-        function spikes = choose_repetition(data, Fs, plot_var, varargin)
-        % spikes = choose_repetition(data, Fs, plot_var, varargin)
+        function spikes = choose_repetition(obj, data, plot_var, varargin)
+        %  spikes = choose_repetition(obj, data, plot_var, varargin)
         % spikes = choose_repetition(data, 10000, 1, 2)
             
             % combine all sweeps
@@ -163,7 +181,7 @@ classdef AllCells < matlab.mixin.Copyable
                 for i = 1:size(data, 1) % iterate over sweeps
                     
                     % extract spikes
-                    x = SpikeParameters(data(i,:), Fs);
+                    x = SpikeParameters(data(i,:), obj.Fs);
                     all_spikes{i} = x.extract_spikes();
                 end
                 
@@ -178,7 +196,7 @@ classdef AllCells < matlab.mixin.Copyable
                     error([' Repetition -' num2str(rep)  '- was not found.'])
                 else
                     % extract spikes from sweep
-                    x = SpikeParameters(data(rep,:), Fs);
+                    x = SpikeParameters(data(rep,:), obj.Fs);
                     spikes = x.extract_spikes();
                 end
             end
