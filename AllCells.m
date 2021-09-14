@@ -1,12 +1,13 @@
 classdef AllCells < matlab.mixin.Copyable
     %
     % % Get spike properties
-    % prism_array = AllCells.all_cells('Z:\Pantelis\Phil_data')
+    % prism_array = AllCells.all_cells('Z:\Phil\Ephys\phaseplane_test')
     %
 
     properties
         Fs = 10000
         plot_var = 'mean'
+        spike_array
     end
     
     methods(Static) % Spike properties
@@ -81,6 +82,13 @@ classdef AllCells < matlab.mixin.Copyable
     
     methods % Phase plane
         
+        % consturctor
+        function obj = AllCells(spike_array, Fs, plot_var)
+            obj.spike_array = spike_array;
+            obj.Fs = Fs;
+            obj.plot_var = plot_var;
+        end
+        
         % phase plane
         function plot_phase_plane_conditions(obj, main_path, conditions)
             % plot_phase_plane_conditions(obj, main_path, conditions)
@@ -152,9 +160,15 @@ classdef AllCells < matlab.mixin.Copyable
                 % load all current steps
                 s = load(fullfile(main_path, file_dir(i).name ),'store_mat');
                 
-                % get index for largest current step
-                io = cell2mat(s.store_mat(:,2));
-                data = s.store_mat{get_index(s.store_mat(:,2), max(io)), 1};
+                % find step with most spikes
+                idx = find(contains(obj.spike_array(:,1), file_dir(i).name));
+                spike_count = sum(obj.spike_array{idx,2}, 2);               % find sum of spikes per current injection
+                [~, max_spike_idx] = max(spike_count);                      % find index of max spike count
+                input_current = obj.spike_array{idx,3}{max_spike_idx};      % find input current
+                
+                % get waveforms
+                disp(file_dir(i).name)
+                data = s.store_mat{get_index(s.store_mat(:,2), round(input_current/10)), 1};
                 
                 % get aver spike
                 spikes = obj.choose_repetition(data, 0);
